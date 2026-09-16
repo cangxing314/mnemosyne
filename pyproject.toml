@@ -1,0 +1,30 @@
+[project]
+name = "mnemosyne"
+version = "0.1.0"
+description = "NPC Agent with long-term memory and self-evaluation (LangGraph + SQLite + Chroma)"
+authors = [
+    { name = "cangxing314", email = "293744671+cangxing314@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "openai>=3.8.0",
+    "python-dotenv>=1.2.3",
+    "sqlalchemy>=2.0.52",
+    "langgraph>=0.4.0",
+    "langgraph-checkpoint-sqlite>=2.0.0",
+    # Web 版依赖：fastapi / uvicorn / chromadb（bootstrap 与镜像都需要）。
+    # 版本与本地开发环境对齐。
+    "fastapi>=0.141.1",
+    "uvicorn>=0.52.4",
+    "chromadb>=1.5.9",
+    "langchain-core>=1.6.2",
+    "langchain-openai>=1.6.1",
+]
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"

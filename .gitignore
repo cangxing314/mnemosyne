@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Project data (databases, vector index) — regenerate locally
+data/*.db
+# SQLite 的 WAL 附属文件：进程被强杀时留下 -wal / -shm，上面那条 *.db 匹配不到
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite
+data/*.sqlite3
+data/chroma/
+data/reports/
+# 评测沙盒：每个场景一份 DB 副本（跑批自动生成，绝不入库）
+data/sandbox/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# 本地工作文档：设计草稿等，仅本地保留
+docs/
+
+# 本地开发记录（编辑器缓存、运行日志），不进仓库
+.workbuddy/

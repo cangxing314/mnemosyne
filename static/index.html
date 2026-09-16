@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老陈铁匠铺</title>
+    <style>
+        /* 整个页面：暗色背景，内容居中 */
+        body { font-family: "Microsoft YaHei", sans-serif; background: #171310;
+               color: #f0e6d8; margin: 0; height: 100vh;
+               display: flex; flex-direction: column; align-items: center; }
+
+        /* 顶栏：标题 + 重置按钮 */
+        header { width: 1000px; max-width: 95vw; padding: 12px 4px;
+                 display: flex; justify-content: space-between; align-items: center; }
+        header .brand { color: #e8c07a; font-size: 17px; letter-spacing: 2px; }
+        header button { background: none; border: 1px solid #5a4632; color: #b09a7e;
+                        padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+
+        /* 主区域：左边立绘，右边对话 */
+        .stage { display: flex; gap: 14px; width: 1000px; max-width: 95vw;
+                 flex: 1; min-height: 0; padding-bottom: 14px; }
+        .portrait { width: 400px; flex: none; background: #1c1510;
+                    border: 1px solid #3a2e24; border-radius: 10px; overflow: hidden; }
+        .portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+        /* 对话区：上消息列表，下输入框 */
+        .chat { flex: 1; display: flex; flex-direction: column; min-width: 0;
+                background: #241c15; border: 1px solid #3a2e24; border-radius: 10px;
+                overflow: hidden; }
+        .log { flex: 1; overflow-y: auto; padding: 14px 16px;
+               display: flex; flex-direction: column; gap: 10px; }
+
+        /* 三种消息：玩家靠右、老陈靠左、旁白居中灰字 */
+        .msg { max-width: 78%; padding: 9px 13px; border-radius: 10px;
+               font-size: 14px; line-height: 1.65; white-space: pre-wrap; }
+        .user { align-self: flex-end; background: #4a3a2a; }
+        .npc  { align-self: flex-start; background: #33281f; }
+        .narration { align-self: center; color: #8a7a66; font-style: italic;
+                     font-size: 13px; max-width: 90%; text-align: center; }
+        .error { align-self: center; color: #d96a5a; font-size: 13px; }
+
+        .input { display: flex; gap: 8px; padding: 10px 12px;
+                 border-top: 1px solid #3a2e24; }
+        .input input { flex: 1; border: 1px solid #3a2e24; border-radius: 6px;
+                       background: #1c1510; color: #f0e6d8; padding: 10px 12px;
+                       font-size: 14px; outline: none; }
+        .input button { border: none; border-radius: 6px; background: #8a5a2b;
+                        color: #fff; padding: 0 20px; cursor: pointer; font-size: 14px; }
+        .input button:disabled { opacity: .5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">铁溪镇 · 老陈铁匠铺</div>
+    <button onclick="resetSession()">换个人进店</button>
+</header>
+
+<div class="stage">
+        <!-- 立绘：图片名 laochen.jpg（用别的格式就改这里的后缀） -->
+        <div class="portrait">
+            <img src="/img/laochen.jpg" alt="老陈" onerror="this.parentElement.style.display='none'">
+        </div>
+
+    <div class="chat">
+        <div class="log" id="log">
+            <div class="narration">（你睁开眼，躺在一座山洞里。洞壁刻满看不懂的符文，隐隐泛着微光，
+                身下像是一座废弃祭坛的残台。你什么也不记得——不知自己是谁，也不知这是何处。
+                你满心疑惑，朝洞口走去。远处山脚下有几点灯火，你循着光，一路走到了一座小镇。
+                街尾有家铁匠铺，炉火正旺。门口站着个中年男人，正一下一下地打铁。）</div>
+            <div class="msg npc">（老陈在打铁，头也没抬）生面孔。有事说事。</div>
+        </div>
+        <div class="input">
+            <input id="box" placeholder="说点什么……" autofocus>
+            <button id="sendBtn" onclick="send()">发送</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* 会话钥匙：第一次打开生成随机 id 存 localStorage，
+   每次请求都带着，后端按它分开存各会话的历史 */
+let sessionId = localStorage.getItem("laochen_session");
+if (!sessionId) {
+    sessionId = Math.random().toString(36).slice(2);
+    localStorage.setItem("laochen_session", sessionId);
+}
+
+/* 换个人进店：换把新钥匙 = 新玩家，刷新页面 */
+function resetSession() {
+    localStorage.removeItem("laochen_session");
+    location.reload();
+}
+
+const box = document.getElementById("box");
+const sendBtn = document.getElementById("sendBtn");
+
+/* 发消息（流式版）：画自己的气泡 → 请求 /chat/stream → 老陈的话逐字蹦出来 */
+async function send() {
+    const text = box.value.trim();
+    if (!text || sendBtn.disabled) return;
+    box.value = "";
+    addMsg("user", text);
+    box.disabled = sendBtn.disabled = true;      // 等待期间不许再发
+    try {
+        const resp = await fetch("/chat/stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text, session_id: sessionId }),
+        });
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+        // 先建一个空的老陈气泡，后面逐块往里面填字（打字机效果）
+        const log = document.getElementById("log");
+        const div = document.createElement("div");
+        div.className = "msg npc";
+        log.appendChild(div);
+
+        // fetch 流式读：resp.body 是字节流，getReader() 一块一块读
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();       // 字节 → 文字
+        let buffer = "";                          // 攒半截的缓冲区
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;                      // 读完了
+            buffer += decoder.decode(value, { stream: true });
+            // SSE 分块：数据用 "data: xxx\n\n" 分隔——按空行切开
+            const chunks = buffer.split("\n\n");
+            buffer = chunks.pop();                // 最后半截留到下一轮
+            for (const chunk of chunks) {
+                if (chunk.startsWith("data: ")) {
+                    const token = chunk.slice(6); // 去掉 "data: " 前缀
+                    if (token === "[DONE]") continue;
+                    div.textContent += token;     // 往气泡里追加字
+                }
+            }
+            log.scrollTop = log.scrollHeight;     // 边蹦边滚到底
+        }
+    } catch (e) {
+        addMsg("error", "（后端没响应，检查 uvicorn 是不是还在跑）");
+    } finally {
+        box.disabled = sendBtn.disabled = false;
+        box.focus();
+    }
+}
+
+/* 往消息列表加一条，然后滚到底 */
+function addMsg(who, text) {
+    const log = document.getElementById("log");
+    const div = document.createElement("div");
+    div.className = "msg " + who;
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+}
+
+/* 回车直接发送 */
+box.addEventListener("keydown", e => {
+    if (e.key === "Enter") send();
+});
+
+/* 页面一打开就执行：把这个会话的旧对话拉回来画成气泡
+   （历史存在后端 turn_log 表里。会话钥匙→玩家的对应关系在后端进程内存里，
+     所以刷新页面不丢对话；但服务重启后旧对话不再显示——那时会当新客人接待） */
+async function loadHistory() {
+    const resp = await fetch("/history?session_id=" + sessionId);  // 问后端要旧对话
+    const data = await resp.json();                                // 转成 [{who, text}, ...]
+    for (const item of data) addMsg(item.who, item.text);          // 一条条画成气泡
+}
+loadHistory();
+</script>
+</body>
+</html>

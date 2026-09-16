@@ -1,0 +1,46 @@
+# 构建上下文排除清单：只让 Dockerfile 真正需要的东西进上下文，
+# 否则 .venv（几百 MB）+ data/（库文件）+ .git 会被整包发给 docker daemon，
+# 构建慢十倍，镜像还容易被这些杂文件"污染"。
+#
+# 这里排除的只是**构建上下文**，不影响运行时挂载的数据卷。
+
+.git/
+.gitignore
+.github/
+
+# venv 一律不进镜像：容器里是全新 pip 装的，本地这份是 Windows 的、进去也不能用
+.venv/
+venv/
+
+# 本地数据（库/向量/沙盒/报告）——容器自己会生成，且运行时靠卷挂进来
+data/
+
+# 本地工作文档、评测跑批产物（容器里不需要）
+docs/
+
+# 评测/调试脚本不进镜像：镜像只需要 bootstrap.py 一个入口
+scripts/*
+!scripts/bootstrap.py
+
+# 开发环境杂物
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.idea/
+.vscode/
+*.swp
+
+# 密钥绝不进镜像——运行时用 --env-file / compose 的 env_file 注入
+.env
+.env.local
+
+# 文档与杂项
+*.md
+!README.md
+.DS_Store
+Thumbs.db
+uv.lock
+pyproject.toml

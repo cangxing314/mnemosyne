@@ -1,0 +1,9 @@
+# 强制这几个文件用 LF 行尾。
+# core.autocrlf 开启时 checkout 会把 LF 换成 CRLF，而 Dockerfile / compose /
+# shell 脚本在 Linux 侧按 LF 解析——CRLF 会让 shebang 失效、`\` 续行断掉。
+# 只覆盖构建相关文件，不动仓库其他文件的既有行为。
+Dockerfile text eol=lf
+Makefile text eol=lf
+*.sh text eol=lf
+docker-compose.yml text eol=lf
+.dockerignore text eol=lf
